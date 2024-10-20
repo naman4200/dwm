@@ -1,0 +1,190 @@
+`Client Server`
+
+import java.io.*;
+import java.net.*;
+
+public class AddClient {
+    public static void main(String[] args) {
+        try {
+            String serverAddress = "localhost";  // Change this line
+            Socket socket = new Socket(serverAddress, 5000);
+            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+
+            System.out.print("Enter first number: ");
+            int number1 = Integer.parseInt(userInput.readLine());
+            System.out.print("Enter second number: ");
+            int number2 = Integer.parseInt(userInput.readLine());
+
+            output.println(number1);
+            output.println(number2);
+            String result = input.readLine();
+            System.out.println(result);
+            socket.close();
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+}
+
+
+import java.io.*;
+import java.net.*;
+
+public class AddServer {
+    public static void main(String[] args) {
+        try {
+            ServerSocket ss = new ServerSocket(5000);
+            System.out.println("Server is waiting for a connection...");
+            Socket s = ss.accept();
+            System.out.println("Client connected!");
+
+            BufferedReader input = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            PrintWriter output = new PrintWriter(s.getOutputStream(), true);
+            
+            int number1 = Integer.parseInt(input.readLine());
+            int number2 = Integer.parseInt(input.readLine());
+            int sum = number1 + number2;
+            output.println("The sum is: " + sum);
+            
+            s.close();
+            ss.close();
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+}
+
+
+
+UDP
+# Create a simulator object 
+set ns [new Simulator] 
+# Define different colors for data flows (for NAM) 
+$ns color 1 Blue 
+$ns color 2 Red 
+# Open the NAM trace file 
+set nf [open out.nam w] 
+$ns namtrace-all $nf 
+# Define a 'finish' procedure 
+proc finish {} { 
+global ns nf 
+$ns flush-trace 
+# Close the NAM trace file 
+close $nf 
+# Execute NAM on the trace file 
+exec nam out.nam & 
+exit 0 
+} 
+# Create four nodes 
+set n0 [$ns node] 
+set n1 [$ns node] 
+set n2 [$ns node] 
+set n3 [$ns node] 
+# Create links between the nodes 
+$ns duplex-link $n0 $n2 2Mb 10ms DropTail 
+$ns duplex-link $n1 $n2 2Mb 10ms DropTail 
+$ns duplex-link $n2 $n3 1.7Mb 20ms DropTail 
+# Set Queue Size of link (n2-n3) to a moderate value 
+$ns queue-limit $n2 $n3 5;      
+# Limit to 5 packets 
+# Give node position (for NAM) 
+$ns duplex-link-op $n0 $n2 orient right-down 
+$ns duplex-link-op $n1 $n2 orient right-up 
+$ns duplex-link-op $n2 $n3 orient right 
+# Monitor the queue for link (n2-n3) (for NAM) 
+$ns duplex-link-op $n2 $n3 queuePos 0.5 
+# Setup a UDP connection 
+set udp [new Agent/UDP] 
+$ns attach-agent $n1 $udp 
+set null [new Agent/Null] 
+$ns attach-agent $n3 $null 
+$ns connect $udp $null 
+$udp set fid_ 2 
+# Setup a CBR over UDP connection 
+set cbr [new Application/Traffic/CBR] 
+$cbr attach-agent $udp 
+$cbr set type_ CBR 
+$cbr set packet_size_ 1000;      
+# Packet size of 1000 bytes 
+$cbr set rate_ 1.5mb;                
+$cbr set random_ false 
+# Set rate to 1.5 Mbps for fewer drops 
+# Schedule events for the CBR agent 
+$ns at 0.1 "$cbr start" 
+$ns at 4.5 "$cbr stop" 
+# Call the finish procedure after 10 seconds of simulation time 
+$ns at 10.0 "finish" 
+# Print CBR packet size and rate 
+puts "CBR packet size = [$cbr set packet_size_]" 
+puts "CBR rate = [$cbr set rate_]" 
+# Run the simulation 
+$ns run 
+
+TCP
+#Create a simulator object 
+set ns [new Simulator] 
+# Define different colors for data flows (for NAM) 
+$ns color 1 Blue 
+$ns color 2 Red 
+# Open the NAM trace file 
+set nf [open out.nam w] 
+$ns namtrace-all $nf 
+# Define a 'finish' procedure 
+proc finish {} { 
+global ns nf 
+$ns flush-trace 
+# Close the NAM trace file 
+close $nf 
+# Execute NAM on the trace file 
+exec nam out.nam & 
+exit 0 
+} 
+# Create four nodes 
+set n0 [$ns node] 
+set n1 [$ns node] 
+set n2 [$ns node] 
+set n3 [$ns node] 
+# Create links between the nodes 
+$ns duplex-link $n0 $n2 2Mb 10ms DropTail 
+$ns duplex-link $n1 $n2 2Mb 10ms DropTail 
+$ns duplex-link $n2 $n3 1.7Mb 20ms DropTail 
+# Set Queue Size of link (n2-n3) to a low value to induce drops 
+$ns queue-limit $n2 $n3 5  ; # Reduce to 5 packets 
+# Give node position (for NAM) 
+$ns duplex-link-op $n0 $n2 orient right-down 
+$ns duplex-link-op $n1 $n2 orient right-up 
+$ns duplex-link-op $n2 $n3 orient right 
+# Monitor the queue for link (n2-n3) (for NAM) 
+$ns duplex-link-op $n2 $n3 queuePos 0.5 
+# Setup a TCP connection 
+set tcp [new Agent/TCP] 
+$tcp set class_ 2 
+$ns attach-agent $n0 $tcp 
+set sink [new Agent/TCPSink] 
+$ns attach-agent $n3 $sink 
+$ns connect $tcp $sink 
+$tcp set fid_ 1 
+# Setup a FTP over TCP connection 
+set ftp [new Application/FTP] 
+$ftp attach-agent $tcp 
+$ftp set type_ FTP 
+# Increase the size of the file being sent to encourage drops 
+$ftp set file_size_ 1000000  ; # Set file size to 1MB 
+# Schedule events for the FTP agent 
+$ns at 1.0 "$ftp start" 
+$ns at 4.0 "$ftp stop" 
+# Detach tcp and sink agents (not really necessary) 
+$ns at 4.5 "$ns detach-agent $n0 $tcp ; $ns detach-agent $n3 $sink" 
+# Call the finish procedure after 5 seconds of simulation time 
+$ns at 5.0 "finish" 
+# Print TCP packet size and rate 
+set packet_size 1000       
+; # Assume typical TCP packet size 
+set link_rate 2.0          ; # Link capacity in Mbps 
+puts "TCP packet size = $packet_size bytes" 
+puts "Link rate = $link_rate Mbps" 
+# Run the simulation 
+$ns run 
+
